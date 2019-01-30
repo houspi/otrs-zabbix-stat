@@ -1,4 +1,5 @@
 # otrs-zabbix-stat
-Otrs statistics for Zabbix.
-By tickets state.
-By queue state.
+Integration of Zabbix and Otrs to display statistics in Zabbix.
+- by active users
+- by tickets state
+- by queue state
