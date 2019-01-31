@@ -175,7 +175,7 @@ sub GetStatByStateType {
             Result   => 'COUNT',
             UserID   => 1,
             StateTypeIDs => \@ClosedStateTypeIDs,
-            TicketCreateTimeNewerDate => $LastGetStatByState, 
+            TicketChangeTimeNewerDate => $LastGetStatByState, 
         );
     } else {
         $TicketIDs[0] = "-1";
