@@ -67,8 +67,8 @@ my %get_stats_rules = (
     "queue" => \&GetStatByQueue,
 );
 
-my @ClosedStateTypeIDs = ( 3, 6, 7 );
-my @OpenedStateTypeIDs = ( 1, 2, 4, 5 );
+my @ClosedStateTypeIDs = ( 3, 5, 6, 7 );
+my @OpenedStateTypeIDs = ( 1, 2, 4);
 my @UserTypes = qw(User Customer);
 
 my $rv = "-1";
