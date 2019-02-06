@@ -7,14 +7,14 @@
 =head1 DESCRIPTION
  For Zabbix
  Script returns some stats for Zabbix 
- number of created/closed tickets
- number of active agents/customers
- number of tickets in various open states
- number of open tickets in queues
+ Ticket activity: number of created/closed tickets
+ User activity: number of active agents/customers
+ Count of open tickets in queues
+ Count of tickets in various open states
  
  Usage: /opt/otrs/bin/otrs.ZabbixStat.pl [params]
 
- without any params this script works in LLD mode
+ Without any params this script works in LLD mode
  returns a list of queues and states
 
 =cut
@@ -47,19 +47,19 @@ my $CacheTTL = 31536000; # seconds, this means 1 year
 #
 # Users
 # UserParameter=otrs.users[*],/opt/otrs/bin/otrs.ZabbixStat.pl users $1
-# otrs.users[Customer]  ! On by default
-# otrs.users[User]      ! On by default
+# otrs.users[Customer]  
+# otrs.users[User]      
 #
 # All ticket states
 # UserParameter=otrs.tickets.state[*],/opt/otrs/bin/otrs.ZabbixStat.pl statetype $1
-# otrs.tickets.state[Created]   ! On by default
-# otrs.tickets.state[Closed]    ! On by default
+# otrs.tickets.state[Created]   
+# otrs.tickets.state[Closed]    
 #
 # Tickets states by queue
 # UserParameter=otrs.queue[*],/opt/otrs/bin/otrs.ZabbixStat.pl queue $1 $2
 # otrs.queue.state[{#QUEUEID}, Opened]  ! Off by default
 #
-#
+
 
 my %get_stats_rules = (
     "users"     => \&GetStatByUsers,
@@ -69,31 +69,20 @@ my %get_stats_rules = (
 
 my @ClosedStateTypeIDs = ( 3, 6, 7 );
 my @OpenedStateTypeIDs = ( 1, 2, 4, 5 );
-
-my %StateTypes = (
-    99 => "created", 
-    1  => "new", 
-    2  => "open", 
-    3  => "closed", 
-    4  => "pending reminder", 
-    5  => "pending auto", 
-    6  => "removed", 
-    7  => "merged", 
-);
-
 my @UserTypes = qw(User Customer);
 
+my $rv = "-1";
 
 if (!scalar(@ARGV) ) {
-    Discover();
+    $rv = Discover();
 } else {
     my $stat_type = $ARGV[0];
     if( exists($get_stats_rules{$stat_type}) ) {
-        $get_stats_rules{$stat_type}->();
-    } else {
-        print "-1\n";
+        $rv = $get_stats_rules{$stat_type}->();
     }
 }
+print "$rv\n";
+
 
 =item Discover
     LLD mode
@@ -113,32 +102,30 @@ sub Discover {
                                        "{#QUEUEGROUPNAME}" => $GroupData{Name} } );
     }
     my %ListType = $Kernel::OM->Get('Kernel::System::State')->StateTypeList( UserID => 1 );
-    foreach my $StateID ( sort keys(%ListType) ) {
-        push( @{$json_data{'data'}}, { "{#STATETYPEID}" => int($StateID), "{#STATETYPENAME}" => $ListType{$StateID} } );
+    foreach my $StateTypeID ( sort keys(%ListType) ) {
+        push( @{$json_data{'data'}}, { "{#STATETYPEID}" => int($StateTypeID), "{#STATETYPENAME}" => $ListType{$StateTypeID} } );
     }
     foreach my $UserType ( @UserTypes ) {
         push( @{$json_data{'data'}}, { "{#USERTYPENAME}" => $UserType } );
     }
-    print to_json(\%json_data), "\n";
+    return to_json(\%json_data);
 }
+
 
 =item GetStatByUsers
    returns the number of online users or customers
 =cut
 sub GetStatByUsers {
     my $UserType = $ARGV[1] || '';
+
     if ( $UserType ne 'User' && $UserType ne 'Customer' ) {
-        print "-1\n";
-        return;
+        return "-1";
     }
     use Kernel::System::ObjectManager;
     local $Kernel::OM = Kernel::System::ObjectManager->new();
     my $SessionObject = $Kernel::OM->Get('Kernel::System::AuthSession');
-    
-    my %Result = $SessionObject->GetActiveSessions(
-        UserType => $UserType,
-    );
-    print "$Result{Total}\n";
+    my %Result = $SessionObject->GetActiveSessions( UserType => $UserType );
+    return $Result{Total};
 }
 
 
@@ -150,16 +137,17 @@ sub GetStatByStateType {
     
     my $ChacheKey = join(":", "STATETYPE", $StateType);
     use POSIX qw(strftime);
-    my $CurGetStatByState = strftime "%Y-%m-%d %H:%M:%S", localtime;
+    my $CurGetStat = strftime "%Y-%m-%d %H:%M:%S", localtime;
 
     local $Kernel::OM = Kernel::System::ObjectManager->new();
+    
     my $CacheObject = $Kernel::OM->Get('Kernel::System::Cache');
-    my $LastGetStatByState = $CacheObject->Get(
-        Type => 'GetStatByState',
+    my $LastGetStat = $CacheObject->Get(
+        Type => 'GetStatByStateType',
         Key  => $ChacheKey,
     );
-    if (!$LastGetStatByState) {
-        $LastGetStatByState = $CurGetStatByState;
+    if (!$LastGetStat) {
+        $LastGetStat = $CurGetStat;
     }
     
     my $TicketObject = $Kernel::OM->Get('Kernel::System::Ticket');
@@ -168,28 +156,29 @@ sub GetStatByStateType {
         @TicketIDs = $TicketObject->TicketSearch(
             Result   => 'COUNT',
             UserID   => 1,
-            TicketCreateTimeNewerDate => $LastGetStatByState, 
+            TicketCreateTimeNewerDate => $LastGetStat, 
         );
     } elsif ($StateType eq 'Closed') {
         @TicketIDs = $TicketObject->TicketSearch(
             Result   => 'COUNT',
             UserID   => 1,
             StateTypeIDs => \@ClosedStateTypeIDs,
-            TicketChangeTimeNewerDate => $LastGetStatByState, 
+            TicketChangeTimeNewerDate => $LastGetStat, 
         );
     } else {
         $TicketIDs[0] = "-1";
     }
     $CacheObject->Set(
-        Type  => 'GetStatByState',
+        Type  => 'GetStatByStateType',
         Key   => $ChacheKey,
-        Value => $CurGetStatByState,
+        Value => $CurGetStat,
         TTL   => $CacheTTL, 
         CacheInMemory  => 0,
         CacheInBackend => 1,
     );
-    print $TicketIDs[0] . "\n";
+    return $TicketIDs[0];
 }
+
 
 =item GetStatByQueue
    returns the number of tickets in the open state type in a specific queue
@@ -204,8 +193,8 @@ sub GetStatByQueue {
     my $TicketObject = $Kernel::OM->Get('Kernel::System::Ticket');
     my $CacheObject = $Kernel::OM->Get('Kernel::System::Cache');
 
+    #just in case. Maybe I'll use it in the future.
     my $ChacheKey = join(":", "QUEUE", $QueueID,  $StateType);
-    
     use POSIX qw(strftime);
     my $CurGetStatByQueue = strftime "%Y-%m-%d %H:%M:%S", localtime;
     my $LastGetStatByQueue = $CacheObject->Get(
@@ -217,15 +206,13 @@ sub GetStatByQueue {
     }
     my @TicketIDs;
     if ($StateType eq 'Opened' ) {
-#            TicketCreateTimeNewerDate => $LastGetStatByQueue, 
         @TicketIDs = $TicketObject->TicketSearch(
             Result   => 'COUNT',
-            QueueIDs => [ $QueueID ],
             UserID   => 1,
+            QueueIDs => [ $QueueID ],
             StateTypeIDs => \@OpenedStateTypeIDs,
         );
     } else {
-#            TicketCreateTimeNewerDate => $LastGetStatByQueue, 
         @TicketIDs = $TicketObject->TicketSearch(
             Result   => 'COUNT', 
             UserID   => 1, 
@@ -241,5 +228,17 @@ sub GetStatByQueue {
         CacheInMemory  => 0,
         CacheInBackend => 1,
     );
-    print $TicketIDs[0] . "\n";
+    return $TicketIDs[0];
+}
+
+
+sub PrintStateType {
+    local $Kernel::OM = Kernel::System::ObjectManager->new();
+    my $StateObject = $Kernel::OM->Get('Kernel::System::State');
+    my %ListType = $StateObject->StateTypeList( UserID => 1 );
+    print "\n";
+    foreach my $TypeID (sort keys %ListType) {
+        print "$TypeID => $ListType{$TypeID}\n";
+    }
+    print "\n";
 }

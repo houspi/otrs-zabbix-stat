@@ -29,8 +29,8 @@
                     <snmp_oid/>
                     <key>otrs.tickets.state[Closed]</key>
                     <delay>1h</delay>
-                    <history>90d</history>
-                    <trends>365d</trends>
+                    <history>60d</history>
+                    <trends>1825d</trends>
                     <status>0</status>
                     <value_type>3</value_type>
                     <allowed_hosts/>
@@ -88,8 +88,8 @@
                     <snmp_oid/>
                     <key>otrs.tickets.state[Created]</key>
                     <delay>1h</delay>
-                    <history>90d</history>
-                    <trends>365d</trends>
+                    <history>60d</history>
+                    <trends>1825d</trends>
                     <status>0</status>
                     <value_type>3</value_type>
                     <allowed_hosts/>
@@ -147,8 +147,8 @@
                     <snmp_oid/>
                     <key>otrs.users[Customer]</key>
                     <delay>30m</delay>
-                    <history>90d</history>
-                    <trends>365d</trends>
+                    <history>60d</history>
+                    <trends>1825d</trends>
                     <status>0</status>
                     <value_type>3</value_type>
                     <allowed_hosts/>
@@ -206,8 +206,8 @@
                     <snmp_oid/>
                     <key>otrs.users[User]</key>
                     <delay>30m</delay>
-                    <history>90d</history>
-                    <trends>365d</trends>
+                    <history>60d</history>
+                    <trends>1825d</trends>
                     <status>0</status>
                     <value_type>3</value_type>
                     <allowed_hosts/>
@@ -299,8 +299,8 @@
                             <snmp_oid/>
                             <key>otrs.queue.state[{#QUEUEID}, Opened]</key>
                             <delay>1h</delay>
-                            <history>90d</history>
-                            <trends>365d</trends>
+                            <history>60d</history>
+                            <trends>1825d</trends>
                             <status>1</status>
                             <value_type>3</value_type>
                             <allowed_hosts/>
@@ -417,51 +417,7 @@
     </templates>
     <graphs>
         <graph>
-            <name>OTRS active users</name>
-            <width>900</width>
-            <height>200</height>
-            <yaxismin>0.0000</yaxismin>
-            <yaxismax>100.0000</yaxismax>
-            <show_work_period>1</show_work_period>
-            <show_triggers>1</show_triggers>
-            <type>0</type>
-            <show_legend>1</show_legend>
-            <show_3d>0</show_3d>
-            <percent_left>0.0000</percent_left>
-            <percent_right>0.0000</percent_right>
-            <ymin_type_1>0</ymin_type_1>
-            <ymax_type_1>0</ymax_type_1>
-            <ymin_item_1>0</ymin_item_1>
-            <ymax_item_1>0</ymax_item_1>
-            <graph_items>
-                <graph_item>
-                    <sortorder>0</sortorder>
-                    <drawtype>0</drawtype>
-                    <color>1A7C11</color>
-                    <yaxisside>0</yaxisside>
-                    <calc_fnc>2</calc_fnc>
-                    <type>0</type>
-                    <item>
-                        <host>Template OTRS</host>
-                        <key>otrs.users[User]</key>
-                    </item>
-                </graph_item>
-                <graph_item>
-                    <sortorder>1</sortorder>
-                    <drawtype>0</drawtype>
-                    <color>F63100</color>
-                    <yaxisside>0</yaxisside>
-                    <calc_fnc>2</calc_fnc>
-                    <type>0</type>
-                    <item>
-                        <host>Template OTRS</host>
-                        <key>otrs.users[Customer]</key>
-                    </item>
-                </graph_item>
-            </graph_items>
-        </graph>
-        <graph>
-            <name>OTRS tickets activity</name>
+            <name>OTRS ticket activity</name>
             <width>900</width>
             <height>200</height>
             <yaxismin>0.0000</yaxismin>
@@ -500,6 +456,50 @@
                     <item>
                         <host>Template OTRS</host>
                         <key>otrs.tickets.state[Created]</key>
+                    </item>
+                </graph_item>
+            </graph_items>
+        </graph>
+        <graph>
+            <name>OTRS user activity</name>
+            <width>900</width>
+            <height>200</height>
+            <yaxismin>0.0000</yaxismin>
+            <yaxismax>100.0000</yaxismax>
+            <show_work_period>1</show_work_period>
+            <show_triggers>1</show_triggers>
+            <type>0</type>
+            <show_legend>1</show_legend>
+            <show_3d>0</show_3d>
+            <percent_left>0.0000</percent_left>
+            <percent_right>0.0000</percent_right>
+            <ymin_type_1>0</ymin_type_1>
+            <ymax_type_1>0</ymax_type_1>
+            <ymin_item_1>0</ymin_item_1>
+            <ymax_item_1>0</ymax_item_1>
+            <graph_items>
+                <graph_item>
+                    <sortorder>0</sortorder>
+                    <drawtype>0</drawtype>
+                    <color>1A7C11</color>
+                    <yaxisside>0</yaxisside>
+                    <calc_fnc>2</calc_fnc>
+                    <type>0</type>
+                    <item>
+                        <host>Template OTRS</host>
+                        <key>otrs.users[User]</key>
+                    </item>
+                </graph_item>
+                <graph_item>
+                    <sortorder>1</sortorder>
+                    <drawtype>0</drawtype>
+                    <color>F63100</color>
+                    <yaxisside>0</yaxisside>
+                    <calc_fnc>2</calc_fnc>
+                    <type>0</type>
+                    <item>
+                        <host>Template OTRS</host>
+                        <key>otrs.users[Customer]</key>
                     </item>
                 </graph_item>
             </graph_items>
