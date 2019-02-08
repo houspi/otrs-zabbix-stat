@@ -32,7 +32,6 @@ use lib dirname($RealBin) . '/Custom';
 use Kernel::System::ObjectManager;
 
 use JSON;
-use Data::Dumper;
 
 my $CacheTTL = 2678400; # seconds, this means 1 month
 
@@ -199,13 +198,4 @@ sub GetStatByQueue {
     @TicketIDs = $Kernel::OM->Get('Kernel::System::Ticket')->TicketSearch( %Params );
     $TicketIDs[0] = -1 if ($#TicketIDs < 0 );
     return $TicketIDs[0];
-}
-
-sub PrintStateType {
-    local $Kernel::OM = Kernel::System::ObjectManager->new();
-    my $StateObject = $Kernel::OM->Get('Kernel::System::State');
-    my %ListType = $StateObject->StateTypeList( UserID => 1 );
-    print "\n";
-    print map { "$_ => $ListType{$_}\n" } sort keys %ListType;
-    print "\n";
 }
