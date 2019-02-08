@@ -67,21 +67,15 @@ sub Discover {
     my %json_data;
     $json_data{'data'} = ();
     local $Kernel::OM = Kernel::System::ObjectManager->new();
-    my $QueueObject = $Kernel::OM->Get('Kernel::System::Queue');
-    my %Queues = $QueueObject->QueueList( Valid => 1 );
-    foreach my $QueueID ( keys(%Queues) ) {
-        my %GroupData = $Kernel::OM->Get('Kernel::System::Group')->GroupGet( ID => $QueueObject->GetQueueGroupID(QueueID => $QueueID) );
-        push( @{$json_data{'data'}}, { "{#QUEUEID}"    => int($QueueID), 
-                                       "{#QUEUENAME}"  => $Queues{$QueueID}, 
-                                       "{#QUEUEGROUPID}" => int($GroupData{ID}),
-                                       "{#QUEUEGROUPNAME}" => $GroupData{Name} } );
-    }
+    
+    my %Queues = $Kernel::OM->Get('Kernel::System::Queue')->QueueList( Valid => 1 );
+    map {push( @{$json_data{'data'}}, { "{#QUEUEID}"    => int($_), "{#QUEUENAME}"  => $Queues{$_} }) } sort keys %Queues;
+    
     my %ListType = $Kernel::OM->Get('Kernel::System::State')->StateTypeList( UserID => 1 );
-    foreach my $StateTypeID ( sort keys(%ListType) ) {
-        push( @{$json_data{'data'}}, { "{#STATETYPEID}" => int($StateTypeID), "{#STATETYPENAME}" => $ListType{$StateTypeID} } );
-    }
-    foreach my $UserType ( @UserTypes ) {
-        push( @{$json_data{'data'}}, { "{#USERTYPENAME}" => $UserType } );
+    map {push( @{$json_data{'data'}}, { "{#STATETYPEID}" => int($_), "{#STATETYPENAME}" => $ListType{$_} } )} sort keys %ListType;
+    
+    foreach ( @UserTypes ) {
+        push( @{$json_data{'data'}}, { "{#USERTYPENAME}" => $_ } );
     }
     return to_json(\%json_data);
 }
@@ -207,14 +201,11 @@ sub GetStatByQueue {
     return $TicketIDs[0];
 }
 
-
 sub PrintStateType {
     local $Kernel::OM = Kernel::System::ObjectManager->new();
     my $StateObject = $Kernel::OM->Get('Kernel::System::State');
     my %ListType = $StateObject->StateTypeList( UserID => 1 );
     print "\n";
-    foreach my $TypeID (sort keys %ListType) {
-        print "$TypeID => $ListType{$TypeID}\n";
-    }
+    print map { "$_ => $ListType{$_}\n" } sort keys %ListType;
     print "\n";
 }
