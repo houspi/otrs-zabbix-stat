@@ -1,16 +1,16 @@
 #!/usr/bin/perl
 ## --
 ## bin/otrs.ZabbixStat.pl - generate stats for Zabbix
-## Copyright (C) 2018 houspi https://github.com/houspi
+## 2018 houspi https://github.com/houspi
 ## --
 
 =head1 DESCRIPTION
- For Zabbix
+ 
  Script returns some stats for Zabbix 
  Ticket activity: number of created/closed tickets
  User activity: number of active agents/customers
  Count of open tickets in queues
- Count of tickets in various open states
+ Count of tickets in various states
  
  Usage: /opt/otrs/bin/otrs.ZabbixStat.pl [params]
 
@@ -23,8 +23,6 @@ use strict;
 use warnings;
 use utf8;
 
-use Getopt::Long;
-
 use File::Basename;
 use FindBin qw($RealBin);
 use lib dirname($RealBin);
@@ -36,35 +34,12 @@ use Kernel::System::ObjectManager;
 use JSON;
 use Data::Dumper;
 
-my $CacheTTL = 31536000; # seconds, this means 1 year
-
-#
-# Config Items
-#
-# Discover rule
-# otrs.discovery
-# UserParameter=otrs.discovery,/opt/otrs/bin/otrs.ZabbixStat.pl
-#
-# Users
-# UserParameter=otrs.users[*],/opt/otrs/bin/otrs.ZabbixStat.pl users $1
-# otrs.users[Customer]  
-# otrs.users[User]      
-#
-# All ticket states
-# UserParameter=otrs.tickets.state[*],/opt/otrs/bin/otrs.ZabbixStat.pl statetype $1
-# otrs.tickets.state[Created]   
-# otrs.tickets.state[Closed]    
-#
-# Tickets states by queue
-# UserParameter=otrs.queue[*],/opt/otrs/bin/otrs.ZabbixStat.pl queue $1 $2
-# otrs.queue.state[{#QUEUEID}, Opened]  ! Off by default
-#
-
+my $CacheTTL = 2678400; # seconds, this means 1 month
 
 my %get_stats_rules = (
     "users"     => \&GetStatByUsers,
     "statetype" => \&GetStatByStateType,
-    "queue" => \&GetStatByQueue,
+    "queue"     => \&GetStatByQueue,
 );
 
 my @ClosedStateTypeIDs = ( 3, 5, 6, 7 );
@@ -150,24 +125,25 @@ sub GetStatByStateType {
         $LastGetStat = $CurGetStat;
     }
     
-    my $TicketObject = $Kernel::OM->Get('Kernel::System::Ticket');
     my @TicketIDs;
+    my %Params;
     if ($StateType eq 'Created' ) {
-        @TicketIDs = $TicketObject->TicketSearch(
+        %Params = (
             Result   => 'COUNT',
             UserID   => 1,
             TicketCreateTimeNewerDate => $LastGetStat, 
         );
     } elsif ($StateType eq 'Closed') {
-        @TicketIDs = $TicketObject->TicketSearch(
+        %Params = (
             Result   => 'COUNT',
             UserID   => 1,
             StateTypeIDs => \@ClosedStateTypeIDs,
             TicketChangeTimeNewerDate => $LastGetStat, 
         );
     } else {
-        $TicketIDs[0] = "-1";
+        return -1;
     }
+    @TicketIDs = $Kernel::OM->Get('Kernel::System::Ticket')->TicketSearch( %Params );
     $CacheObject->Set(
         Type  => 'GetStatByStateType',
         Key   => $ChacheKey,
@@ -182,52 +158,52 @@ sub GetStatByStateType {
 
 =item GetStatByQueue
    returns the number of tickets in the open state type in a specific queue
+   <queue id> <state type> <count with subqueues>
 =cut
 sub GetStatByQueue {
     my $QueueID = $ARGV[1] || 3; # spam queue by default
     $QueueID =~ s/\D//g;
     $QueueID = 3 unless($QueueID);
-    my $StateType = $ARGV[2] || 'Opened';
+    
+    my $StateType = $ARGV[2] || 'opened';
+    $StateType =~ tr/A-Z/a-z/;  # for backward compatibility
+    
+    my $UseSubQueues = $ARGV[3] || 0; 
+    $UseSubQueues = 0 if ( $UseSubQueues =~ /\D/ or ($UseSubQueues != 0 and $UseSubQueues != 1));
     
     local $Kernel::OM = Kernel::System::ObjectManager->new();
-    my $TicketObject = $Kernel::OM->Get('Kernel::System::Ticket');
+    
+    # Use SQL query to check queue
+    # because the QueueLookup method prints error message if the queue doesn't exists
+    my $Select = $Kernel::OM->Get('Kernel::System::DB')->SelectAll(
+        SQL =>    "SELECT COUNT(*) FROM queue WHERE id=?",
+        Bind => [ \$QueueID ]
+    );
+    return -1 if (!@{$Select}[0]->[0]);
+    
     my $CacheObject = $Kernel::OM->Get('Kernel::System::Cache');
 
-    #just in case. Maybe I'll use it in the future.
-    my $ChacheKey = join(":", "QUEUE", $QueueID,  $StateType);
-    use POSIX qw(strftime);
-    my $CurGetStatByQueue = strftime "%Y-%m-%d %H:%M:%S", localtime;
-    my $LastGetStatByQueue = $CacheObject->Get(
-        Type => 'GetStatByQueue',
-        Key  => $ChacheKey,
-    );
-    if (!$LastGetStatByQueue) {
-        $LastGetStatByQueue = $CurGetStatByQueue;
-    }
     my @TicketIDs;
-    if ($StateType eq 'Opened' ) {
-        @TicketIDs = $TicketObject->TicketSearch(
+    my %Params;
+    if ($StateType eq 'opened' ) {
+        %Params = (
             Result   => 'COUNT',
             UserID   => 1,
             QueueIDs => [ $QueueID ],
+            UseSubQueues => $UseSubQueues,
             StateTypeIDs => \@OpenedStateTypeIDs,
         );
     } else {
-        @TicketIDs = $TicketObject->TicketSearch(
-            Result   => 'COUNT', 
-            UserID   => 1, 
-            QueueIDs => [ $QueueID ], 
+        %Params = (
+            Result   => 'COUNT',
+            UserID   => 1,
+            QueueIDs => [ $QueueID ],
+            UseSubQueues => $UseSubQueues,
             StateType    => [ $StateType ],
         );
     }
-    $CacheObject->Set(
-        Type  => 'GetStatByQueue',
-        Key   => $ChacheKey,
-        Value => $CurGetStatByQueue,
-        TTL   => $CacheTTL, 
-        CacheInMemory  => 0,
-        CacheInBackend => 1,
-    );
+    @TicketIDs = $Kernel::OM->Get('Kernel::System::Ticket')->TicketSearch( %Params );
+    $TicketIDs[0] = -1 if ($#TicketIDs < 0 );
     return $TicketIDs[0];
 }
 
