@@ -91,8 +91,7 @@ sub GetStatByUsers {
     }
     use Kernel::System::ObjectManager;
     local $Kernel::OM = Kernel::System::ObjectManager->new();
-    my $SessionObject = $Kernel::OM->Get('Kernel::System::AuthSession');
-    my %Result = $SessionObject->GetActiveSessions( UserType => $UserType );
+    my %Result = $Kernel::OM->Get('Kernel::System::AuthSession')->GetActiveSessions( UserType => $UserType );
     return $Result{Total};
 }
 
@@ -103,7 +102,7 @@ sub GetStatByUsers {
 sub GetStatByStateType {
     my $StateType = $ARGV[1] || '';
     
-    my $ChacheKey = join(":", "STATETYPE", $StateType);
+    my $CacheKey = join(":", "STATETYPE", $StateType);
     use POSIX qw(strftime);
     my $CurGetStat = strftime "%Y-%m-%d %H:%M:%S", localtime;
 
@@ -112,7 +111,7 @@ sub GetStatByStateType {
     my $CacheObject = $Kernel::OM->Get('Kernel::System::Cache');
     my $LastGetStat = $CacheObject->Get(
         Type => 'GetStatByStateType',
-        Key  => $ChacheKey,
+        Key  => $CacheKey,
     );
     if (!$LastGetStat) {
         $LastGetStat = $CurGetStat;
@@ -139,7 +138,7 @@ sub GetStatByStateType {
     @TicketIDs = $Kernel::OM->Get('Kernel::System::Ticket')->TicketSearch( %Params );
     $CacheObject->Set(
         Type  => 'GetStatByStateType',
-        Key   => $ChacheKey,
+        Key   => $CacheKey,
         Value => $CurGetStat,
         TTL   => $CacheTTL, 
         CacheInMemory  => 0,
@@ -173,8 +172,6 @@ sub GetStatByQueue {
         Bind => [ \$QueueID ]
     );
     return -1 if (!@{$Select}[0]->[0]);
-    
-    my $CacheObject = $Kernel::OM->Get('Kernel::System::Cache');
 
     my @TicketIDs;
     my %Params;
