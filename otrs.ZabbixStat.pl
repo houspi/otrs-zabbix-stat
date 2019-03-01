@@ -89,9 +89,25 @@ sub GetStatByUsers {
     if ( $UserType ne 'User' && $UserType ne 'Customer' ) {
         return "-1";
     }
-    use Kernel::System::ObjectManager;
     local $Kernel::OM = Kernel::System::ObjectManager->new();
-    my %Result = $Kernel::OM->Get('Kernel::System::AuthSession')->GetActiveSessions( UserType => $UserType );
+    my $AuthSession = $Kernel::OM->Get('Kernel::System::AuthSession');
+    my %Result = ();
+    if ( $AuthSession->can('GetActiveSessions') ) {
+        %Result = $AuthSession->GetActiveSessions( UserType => $UserType );
+    } else {
+        my %ExpiredSessions = ();
+        foreach ( @{($AuthSession->GetExpiredSessionIDs())[0]} ) {
+            $ExpiredSessions{$_} = 1;
+        }
+        my $Total = 0;
+        foreach ( $AuthSession->GetAllSessionIDs() ) {
+            if ( !exists($ExpiredSessions{$_}) ) {
+                my %Data = $AuthSession->GetSessionIDData( SessionID => $_ );
+                $Total++ if ( $Data{UserType} eq $UserType );
+            }
+        }
+        $Result{Total} = $Total;
+    }
     return $Result{Total};
 }
 
