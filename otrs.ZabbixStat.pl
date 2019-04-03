@@ -133,7 +133,7 @@ sub GetStatByStateType {
         $LastGetStat = $CurGetStat;
     }
     
-    my @TicketIDs;
+    my $Count;
     my %Params;
     if ($StateType eq 'Created' ) {
         %Params = (
@@ -151,7 +151,7 @@ sub GetStatByStateType {
     } else {
         return -1;
     }
-    @TicketIDs = $Kernel::OM->Get('Kernel::System::Ticket')->TicketSearch( %Params );
+    $Count = $Kernel::OM->Get('Kernel::System::Ticket')->TicketSearch( %Params );
     $CacheObject->Set(
         Type  => 'GetStatByStateType',
         Key   => $CacheKey,
@@ -160,7 +160,7 @@ sub GetStatByStateType {
         CacheInMemory  => 0,
         CacheInBackend => 1,
     );
-    return $TicketIDs[0];
+    return $Count;
 }
 
 
@@ -189,7 +189,7 @@ sub GetStatByQueue {
     );
     return -1 if (!@{$Select}[0]->[0]);
 
-    my @TicketIDs;
+    my $Count;
     my %Params;
     if ($StateType eq 'opened' ) {
         %Params = (
@@ -208,7 +208,6 @@ sub GetStatByQueue {
             StateType    => [ $StateType ],
         );
     }
-    @TicketIDs = $Kernel::OM->Get('Kernel::System::Ticket')->TicketSearch( %Params );
-    $TicketIDs[0] = -1 if ($#TicketIDs < 0 );
-    return $TicketIDs[0];
+    $Count = $Kernel::OM->Get('Kernel::System::Ticket')->TicketSearch( %Params );
+    return $Count;
 }
